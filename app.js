@@ -3,40 +3,29 @@
    Auth + Storage: Supabase
    ===================================================== */
 
-// ─── Configuração Supabase ────────────────────────────
-const SUPABASE_URL  = 'https://dbljvtkfsemexvyyotjl.supabase.co';
+// ─── 1. CONFIGURAÇÕES E ESTADO GLOBAL ─────────────────
+const SUPABASE_URL = 'https://dbljvtkfsemexvyyotjl.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_G34ZFZbMO8faTziAk11sPw_knlEyQtw';
-const TABELA        = 'gastos';
+const TABELA = 'gastos';
 
-// Token de sessão do usuário logado
 let tokenSessao = null;
-
-// Headers base (sem auth — usados só no login/cadastro)
-const headersBase = {
-  'Content-Type': 'application/json',
-  'apikey':       SUPABASE_ANON,
-};
-
-// Headers autenticados (usados em todas as operações de dados)
-function headersAuth() {
-  return {
-    ...headersBase,
-    'Authorization': `Bearer ${tokenSessao}`,
-  };
-}
-
-// ─── Estado global ────────────────────────────────────
 let historico = [];
 let historicoGanhos = [];
 let idRemover = null;
-let idEditar  = null; // ID do gasto em edição
+let idRemoverGanho = null;
+let idEditar = null;
 let limiteMensal = 0;
 
-// ═══════════════════════════════════════════════════════
-// AUTENTICAÇÃO
-// ═══════════════════════════════════════════════════════
+const headersBase = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_ANON,
+};
 
-// Troca entre abas Login / Criar Conta
+function headersAuth() {
+  return { ...headersBase, 'Authorization': `Bearer ${tokenSessao}` };
+}
+
+// ─── 2. AUTENTICAÇÃO E SESSÃO ─────────────────────────
 function trocarAba(aba, btn) {
   document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
@@ -46,285 +35,247 @@ function trocarAba(aba, btn) {
 }
 
 function limparErrosAuth() {
-  ['err-login-email','err-login-senha','err-login-geral',
-   'err-reg-email','err-reg-senha','err-reg-confirma','err-reg-geral']
-    .forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = '';
-    });
+  ['err-login-email', 'err-login-senha', 'err-login-geral', 'err-reg-email', 'err-reg-senha', 'err-reg-confirma', 'err-reg-geral']
+    .forEach(id => setError(id, ''));
 }
 
-// ── Login ─────────────────────────────────────────────
 async function fazerLogin() {
   const email = document.getElementById('login-email').value.trim();
   const senha = document.getElementById('login-senha').value;
 
   let valido = true;
   if (!email) { setError('err-login-email', 'Informe seu e-mail.'); valido = false; }
-  if (!senha)  { setError('err-login-senha', 'Informe sua senha.');  valido = false; }
+  if (!senha) { setError('err-login-senha', 'Informe sua senha.'); valido = false; }
   if (!valido) return;
 
   setBloqueadoAuth(true);
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method:  'POST',
-      headers: headersBase,
-      body:    JSON.stringify({ email, password: senha }),
+      method: 'POST', headers: headersBase, body: JSON.stringify({ email, password: senha }),
     });
-
     const dados = await res.json();
-
-    if (!res.ok) {
-      const msg = dados.error_description || dados.msg || 'E-mail ou senha incorretos.';
-      setError('err-login-geral', msg);
-      return;
-    }
-
+    if (!res.ok) throw new Error(dados.error_description || dados.msg || 'E-mail ou senha incorretos.');
     tokenSessao = dados.access_token;
     entrarNoApp(dados.user.email);
-
-  } catch {
-    setError('err-login-geral', 'Erro de conexão. Tente novamente.');
+  } catch (err) {
+    setError('err-login-geral', err.message || 'Erro de conexão.');
   } finally {
     setBloqueadoAuth(false);
   }
 }
 
-// ── Criar Conta ───────────────────────────────────────
 async function fazerCadastro() {
-  const email    = document.getElementById('reg-email').value.trim();
-  const senha    = document.getElementById('reg-senha').value;
+  const email = document.getElementById('reg-email').value.trim();
+  const senha = document.getElementById('reg-senha').value;
   const confirma = document.getElementById('reg-confirma').value;
 
   let valido = true;
-  if (!email)              { setError('err-reg-email',    'Informe um e-mail.');        valido = false; }
-  if (senha.length < 6)    { setError('err-reg-senha',    'Mínimo 6 caracteres.');      valido = false; }
-  if (senha !== confirma)  { setError('err-reg-confirma', 'As senhas não coincidem.');  valido = false; }
+  if (!email) { setError('err-reg-email', 'Informe um e-mail.'); valido = false; }
+  if (senha.length < 6) { setError('err-reg-senha', 'Mínimo 6 caracteres.'); valido = false; }
+  if (senha !== confirma) { setError('err-reg-confirma', 'As senhas não coincidem.'); valido = false; }
   if (!valido) return;
 
   setBloqueadoAuth(true);
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
-      method:  'POST',
-      headers: headersBase,
-      body:    JSON.stringify({ email, password: senha }),
+      method: 'POST', headers: headersBase, body: JSON.stringify({ email, password: senha }),
     });
-
     const dados = await res.json();
+    if (!res.ok) throw new Error(dados.error_description || dados.msg || 'Erro ao criar conta.');
 
-    if (!res.ok) {
-      const msg = dados.error_description || dados.msg || 'Erro ao criar conta.';
-      setError('err-reg-geral', msg);
-      return;
-    }
-
-    // Supabase pode exigir confirmação de e-mail
     if (dados.access_token) {
       tokenSessao = dados.access_token;
       entrarNoApp(dados.user.email);
     } else {
-      setError('err-reg-geral', '');
-      // Mostra mensagem de confirmação e volta pra aba de login
-      document.getElementById('err-reg-geral').style.color = 'var(--success)';
-      setError('err-reg-geral', '✔ Conta criada! Verifique seu e-mail para confirmar.');
+      const msgGeral = document.getElementById('err-reg-geral');
+      msgGeral.style.color = 'var(--success)';
+      msgGeral.textContent = '✔ Conta criada! Verifique seu e-mail para confirmar.';
     }
-
-  } catch {
-    setError('err-reg-geral', 'Erro de conexão. Tente novamente.');
+  } catch (err) {
+    setError('err-reg-geral', err.message || 'Erro de conexão.');
   } finally {
     setBloqueadoAuth(false);
   }
 }
 
-// ── Logout ────────────────────────────────────────────
 async function fazerLogout() {
   try {
-    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
-      method:  'POST',
-      headers: { ...headersBase, 'Authorization': `Bearer ${tokenSessao}` },
-    });
-  } catch { /* ignora erros de rede no logout */ }
+    await fetch(`${SUPABASE_URL}/auth/v1/logout`, { method: 'POST', headers: headersAuth() });
+  } catch { /* ignora */ }
 
-  tokenSessao = null;
-  historico   = [];
-  historicoGanhos = [];
-
-  document.getElementById('tela-app').style.display  = 'none';
+  tokenSessao = null; historico = []; historicoGanhos = [];
+  document.getElementById('tela-app').style.display = 'none';
   document.getElementById('tela-auth').style.display = 'flex';
-  document.getElementById('login-email').value = '';
-  document.getElementById('login-senha').value = '';
+  ['login-email', 'login-senha'].forEach(id => document.getElementById(id).value = '');
 }
 
-// ── Entrar no app após login bem-sucedido ─────────────
 async function entrarNoApp(email) {
   document.getElementById('tela-auth').style.display = 'none';
-  document.getElementById('tela-app').style.display  = 'block';
+  document.getElementById('tela-app').style.display = 'block';
   document.getElementById('user-email-display').textContent = email;
   carregarLimiteSalvo();
 
-  // Carrega os gastos do usuário logado
-  ['stat-total', 'stat-max'].forEach(id => {
-    document.getElementById(id).textContent = 'R$ ...';
-  });
+  ['stat-total', 'stat-max'].forEach(id => document.getElementById(id).textContent = 'R$ ...');
   document.getElementById('stat-count').textContent = '...';
 
-  try {
-    [historico, historicoGanhos] = await Promise.all([
-      dbBuscarTodos(),
-      dbBuscarGanhos(),
-    ]);
-    atualizarStats();
-  } catch {
-    showToast('Erro ao carregar dados.', 'danger');
-    atualizarStats();
-  }
+  const resultados = await Promise.allSettled([dbBuscarTodos(), dbBuscarGanhos()]);
+  historico      = (resultados[0].status === 'fulfilled' && Array.isArray(resultados[0].value)) ? resultados[0].value.filter(g => g && g.id != null) : [];
+  historicoGanhos = (resultados[1].status === 'fulfilled' && Array.isArray(resultados[1].value)) ? resultados[1].value.filter(g => g && g.id != null) : [];
+  if (resultados.some(r => r.status === 'rejected')) showToast('Aviso: alguns dados não carregaram.', 'danger');
+  atualizarStats();
 }
 
-// ═══════════════════════════════════════════════════════
-// API SUPABASE — OPERAÇÕES DE DADOS
-// ═══════════════════════════════════════════════════════
-
+// ─── 3. BANCO DE DADOS (SUPABASE) ─────────────────────
 async function dbBuscarTodos() {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/${TABELA}?select=*&order=id.asc`,
-    { headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
-  );
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABELA}?select=*&order=id.asc`, { headers: headersAuth() });
   if (!res.ok) throw new Error('Erro ao buscar gastos.');
   return res.json();
 }
 
 async function dbInserir(gasto) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/${TABELA}`,
-    {
-      method:  'POST',
-      headers: { ...headersAuth(), 'apikey': SUPABASE_ANON, 'Prefer': 'return=representation' },
-      body:    JSON.stringify(gasto),
-    }
-  );
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABELA}`, {
+    method: 'POST', headers: { ...headersAuth(), 'Prefer': 'return=representation' }, body: JSON.stringify(gasto),
+  });
   if (!res.ok) throw new Error('Erro ao cadastrar gasto.');
   const dados = await res.json();
   return dados[0];
 }
 
 async function dbRemover(id) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/${TABELA}?id=eq.${id}`,
-    { method: 'DELETE', headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
-  );
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABELA}?id=eq.${id}`, { method: 'DELETE', headers: headersAuth() });
   if (!res.ok) throw new Error('Erro ao remover gasto.');
 }
 
-// ─── Ganhos ───────────────────────────────────────────
+async function dbAtualizar(id, dados) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABELA}?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { ...headersAuth(), 'Prefer': 'return=representation' },
+    body: JSON.stringify(dados),
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    console.error('dbAtualizar falhou:', res.status, msg);
+    throw new Error('Erro ao atualizar gasto.');
+  }
+  const resultado = await res.json();
+  return resultado[0];
+}
+
 async function dbBuscarGanhos() {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/ganhos?select=*&order=id.asc`,
-    { headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
-  );
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/ganhos?select=*&order=id.asc`, { headers: headersAuth() });
   if (!res.ok) throw new Error('Erro ao buscar ganhos.');
   return res.json();
 }
 
 async function dbInserirGanho(ganho) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/ganhos`,
-    {
-      method:  'POST',
-      headers: { ...headersAuth(), 'apikey': SUPABASE_ANON, 'Prefer': 'return=representation' },
-      body:    JSON.stringify(ganho),
-    }
-  );
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/ganhos`, {
+    method: 'POST', headers: { ...headersAuth(), 'Prefer': 'return=representation' }, body: JSON.stringify(ganho),
+  });
   if (!res.ok) throw new Error('Erro ao cadastrar ganho.');
   const dados = await res.json();
   return dados[0];
 }
 
 async function dbRemoverGanho(id) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/ganhos?id=eq.${id}`,
-    { method: 'DELETE', headers: { ...headersAuth(), 'apikey': SUPABASE_ANON } }
-  );
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/ganhos?id=eq.${id}`, { method: 'DELETE', headers: headersAuth() });
   if (!res.ok) throw new Error('Erro ao remover ganho.');
 }
 
-async function dbAtualizar(id, dados) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/${TABELA}?id=eq.${id}`,
-    {
-      method:  'PATCH',
-      headers: { ...headersAuth(), 'apikey': SUPABASE_ANON, 'Prefer': 'return=representation' },
-      body:    JSON.stringify(dados),
-    }
-  );
-  if (!res.ok) throw new Error('Erro ao atualizar gasto.');
-  const resultado = await res.json();
-  return resultado[0];
-}
+// ─── 4. LÓGICA DE GASTOS E GANHOS ─────────────────────
+async function salvarGasto() {
+  const nome   = document.getElementById('inp-nome').value;
+  const valor  = document.getElementById('inp-valor').value;
+  const classe = document.getElementById('inp-classe').value;
+  const data   = document.getElementById('inp-data').value;
 
-// ═══════════════════════════════════════════════════════
-// GASTOS — EDIÇÃO
-// ═══════════════════════════════════════════════════════
+  const erros = [validarNome(nome), validarValor(valor), validarClasse(classe), validarData(data)];
+  ['err-nome', 'err-valor', 'err-classe', 'err-data'].forEach((id, i) => setError(id, erros[i]));
+  if (erros.some(e => e !== '')) return;
 
-function renderListaEditar() {
-  const cont = document.getElementById('lista-editar');
-  if (!cont) return;
+  const [y, m, d] = data.split('-');
+  const novoGasto = { nome: nome.trim(), valor: parseFloat(valor), classe: classe.trim(), data: `${d}/${m}/${y}` };
 
-  if (!historico.length) {
-    cont.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">⬡</div>
-        <div class="empty-text">Nenhum gasto para editar</div>
-      </div>`;
-    return;
+  setBloqueadoFormulario(true);
+  try {
+    const registrado = await dbInserir(novoGasto);
+    historico.push(registrado);
+    atualizarStats();
+    ['inp-nome', 'inp-valor', 'inp-data'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('inp-classe').value = '';
+    showToast(`✔ "${nome.trim()}" cadastrado!`, 'success');
+  } catch {
+    showToast('Erro ao salvar.', 'danger');
+  } finally {
+    setBloqueadoFormulario(false);
   }
-
-  cont.innerHTML = historico.map(g => `
-    <div class="report-card">
-      <div class="report-row">
-        <div>
-          <div class="report-name">${escHtml(g.nome)}</div>
-          <div class="report-meta">${escHtml(g.classe)} &nbsp;·&nbsp; ${g.data}</div>
-        </div>
-        <div style="display:flex; align-items:center; gap:14px">
-          <span class="val-cell">R$ ${formatVal(Number(g.valor))}</span>
-          <button class="btn-edit" onclick="abrirModalEditar(${g.id})">✎ Editar</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
 }
 
-function abrirModalEditar(id) {
-  const gasto = historico.find(g => g.id === id);
-  if (!gasto) return;
+async function salvarGanho() {
+  const nome   = document.getElementById('ganho-nome').value;
+  const valor  = document.getElementById('ganho-valor').value;
+  const classe = document.getElementById('ganho-classe').value;
+  const data   = document.getElementById('ganho-data').value;
+  const fixo   = document.getElementById('ganho-fixo').checked;
 
-  idEditar = id;
+  const erros = [validarNome(nome), validarValor(valor), validarClasse(classe), validarData(data)];
+  ['err-ganho-nome', 'err-ganho-valor', 'err-ganho-classe', 'err-ganho-data'].forEach((id, i) => setError(id, erros[i]));
+  if (erros.some(e => e !== '')) return;
 
-  // Preenche o modal com os dados atuais do gasto
-  document.getElementById('edit-nome').value   = gasto.nome;
-  document.getElementById('edit-valor').value  = gasto.valor;
-  document.getElementById('edit-classe').value = gasto.classe;
+  const [y, m, d] = data.split('-');
+  const novoGanho = { nome: nome.trim(), valor: parseFloat(valor), classe: classe.trim(), data: `${d}/${m}/${y}`, fixo };
 
-  // Converte data de DD/MM/YYYY para YYYY-MM-DD (formato do input date)
-  if (gasto.data && gasto.data.includes('/')) {
-    const [d, m, y] = gasto.data.split('/');
-    document.getElementById('edit-data').value = `${y}-${m}-${d}`;
-  } else {
-    document.getElementById('edit-data').value = gasto.data || '';
+  setBloqueadoFormulario(true);
+  try {
+    const registrado = await dbInserirGanho(novoGanho);
+    historicoGanhos.push(registrado);
+    atualizarStats();
+    ['ganho-nome', 'ganho-valor', 'ganho-data'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ganho-classe').value = '';
+    document.getElementById('ganho-fixo').checked = false;
+    showToast(`✔ "${nome.trim()}" cadastrado!`, 'success');
+  } catch {
+    showToast('Erro ao salvar ganho.', 'danger');
+  } finally {
+    setBloqueadoFormulario(false);
   }
-
-  // Limpa erros anteriores
-  ['err-edit-nome','err-edit-valor','err-edit-classe','err-edit-data'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = '';
-  });
-
-  document.getElementById('modal-editar-overlay').classList.add('open');
 }
 
-function fecharModalEditar() {
-  idEditar = null;
-  document.getElementById('modal-editar-overlay').classList.remove('open');
+async function confirmarRemocao() {
+  const tipo = document.getElementById('modal-overlay').dataset.tipo;
+  if (tipo === 'ganho') { await confirmarRemocaoGanho(); return; }
+
+  if (idRemover === null) return;
+  setBloqueadoFormulario(true);
+  try {
+    await dbRemover(idRemover);
+    historico = historico.filter(g => g.id !== idRemover);
+    fecharModal();
+    renderListaRemover();
+    atualizarStats();
+    showToast('✔ Gasto removido!', 'danger');
+  } catch {
+    showToast('Erro ao remover.', 'danger'); fecharModal();
+  } finally {
+    setBloqueadoFormulario(false);
+  }
+}
+
+async function confirmarRemocaoGanho() {
+  if (idRemoverGanho === null) return;
+  setBloqueadoFormulario(true);
+  try {
+    await dbRemoverGanho(idRemoverGanho);
+    historicoGanhos = historicoGanhos.filter(g => g.id !== idRemoverGanho);
+    idRemoverGanho = null;
+    fecharModal();
+    renderListaRemoverGanho();
+    atualizarStats();
+    showToast('✔ Ganho removido!', 'danger');
+  } catch {
+    showToast('Erro ao remover.', 'danger'); fecharModal();
+  } finally {
+    setBloqueadoFormulario(false);
+  }
 }
 
 async function confirmarEdicao() {
@@ -335,212 +286,143 @@ async function confirmarEdicao() {
   const classe = document.getElementById('edit-classe').value;
   const data   = document.getElementById('edit-data').value;
 
-  const eNome   = validarNome(nome);
-  const eValor  = validarValor(valor);
-  const eClasse = validarClasse(classe);
-  const eData   = validarData(data);
-
-  setError('err-edit-nome',   eNome);
-  setError('err-edit-valor',  eValor);
-  setError('err-edit-classe', eClasse);
-  setError('err-edit-data',   eData);
-
-  if (eNome || eValor || eClasse || eData) return;
+  const erros = [validarNome(nome), validarValor(valor), validarClasse(classe), validarData(data)];
+  ['err-edit-nome', 'err-edit-valor', 'err-edit-classe', 'err-edit-data'].forEach((id, i) => setError(id, erros[i]));
+  if (erros.some(e => e !== '')) return;
 
   const [y, m, d] = data.split('-');
-  const dataBR = `${d}/${m}/${y}`;
+  const dados = { nome: nome.trim(), valor: parseFloat(valor), classe: classe.trim(), data: `${d}/${m}/${y}` };
 
-  const dadosAtualizados = {
-    nome:   nome.trim(),
-    valor:  parseFloat(parseFloat(valor).toFixed(2)),
-    classe: classe.trim(),
-    data:   dataBR,
-  };
+  // Bloqueia só os botões do modal de edição, não o app inteiro
+  const btnSalvar = document.querySelector('#modal-editar-overlay .btn-primary');
+  const btnCancelar = document.querySelector('#modal-editar-overlay .btn-cancel');
+  if (btnSalvar) btnSalvar.disabled = true;
+  if (btnCancelar) btnCancelar.disabled = true;
 
-  setBloqueado(true);
   try {
-    const atualizado = await dbAtualizar(idEditar, dadosAtualizados);
-    // Atualiza o array local
+    const atualizado = await dbAtualizar(idEditar, dados);
     const idx = historico.findIndex(g => g.id === idEditar);
     if (idx !== -1) historico[idx] = atualizado;
-
     fecharModalEditar();
     renderListaEditar();
     atualizarStats();
-    showToast(`✔ "${nome.trim()}" atualizado com sucesso!`, 'success');
+    showToast('✔ Atualizado com sucesso!', 'success');
   } catch {
-    showToast('Erro ao atualizar. Verifique sua conexão.', 'danger');
+    showToast('Erro ao atualizar.', 'danger');
   } finally {
-    setBloqueado(false);
+    if (btnSalvar) btnSalvar.disabled = false;
+    if (btnCancelar) btnCancelar.disabled = false;
   }
 }
 
-// ═══════════════════════════════════════════════════════
-// VALIDAÇÃO
-// ═══════════════════════════════════════════════════════
+// ─── 5. STATS E RENDERIZAÇÃO ──────────────────────────
+function atualizarStats() {
+  const totalGastos  = historico.reduce((s, g) => s + Number(g.valor), 0);
+  const totalGanhos  = historicoGanhos.reduce((s, g) => s + Number(g.valor), 0);
+  const maxVal       = historico.length ? Math.max(...historico.map(g => Number(g.valor))) : 0;
+  const balanco      = totalGanhos - totalGastos;
 
-function validarNome(v) {
-  if (!v || v.trim().length === 0) return 'Informe um nome válido.';
-  if (/^\d+$/.test(v.trim()))      return 'O nome não pode ser apenas números.';
-  return '';
+  document.getElementById('stat-total').textContent  = `R$ ${formatVal(totalGastos)}`;
+  document.getElementById('stat-count').textContent  = historico.length;
+  document.getElementById('stat-max').textContent    = `R$ ${formatVal(maxVal)}`;
+
+  const cardTotal  = document.getElementById('stat-total').parentElement;
+  const cardLimite = document.getElementById('card-limite');
+  if (cardTotal)  cardTotal.classList.remove('alerta-atencao', 'alerta-critico');
+  if (cardLimite) cardLimite.classList.remove('alerta-atencao', 'alerta-critico');
+
+  if (limiteMensal > 0) {
+    const p = (totalGastos / limiteMensal) * 100;
+    if (p >= 100) {
+      if (cardTotal)  cardTotal.classList.add('alerta-critico');
+      if (cardLimite) cardLimite.classList.add('alerta-critico');
+      showToast('⚠️ Limite de gastos excedido!', 'danger');
+    } else if (p >= 80) {
+      if (cardTotal)  cardTotal.classList.add('alerta-atencao');
+      if (cardLimite) cardLimite.classList.add('alerta-atencao');
+    }
+  }
+
+  const elBalanco = document.getElementById('stat-balanco');
+  if (elBalanco) {
+    elBalanco.textContent = `R$ ${formatVal(balanco)}`;
+    elBalanco.style.color = balanco >= 0 ? 'var(--success)' : 'var(--danger)';
+  }
+
+  window.dispatchEvent(new Event('dadosAtualizados'));
 }
 
-function validarValor(v) {
-  const n = parseFloat(v);
-  if (isNaN(n)) return 'Informe um número válido (ex: 50.30).';
-  if (n <= 0)   return 'O valor precisa ser maior que zero.';
-  return '';
-}
-
-function validarClasse(v) {
-  if (!v || v.trim().length === 0) return 'Informe uma categoria válida.';
-  if (/^\d+$/.test(v.trim()))      return 'A categoria não pode ser apenas números.';
-  return '';
-}
-
-function validarData(v) {
-  if (!v) return 'Selecione uma data.';
-  return '';
-}
-
-function setError(id, msg) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = msg;
-}
-
-// ═══════════════════════════════════════════════════════
-// GASTOS — CADASTRO
-// ═══════════════════════════════════════════════════════
-
-async function salvarGasto() {
-  const nome   = document.getElementById('inp-nome').value;
-  const valor  = document.getElementById('inp-valor').value;
-  const classe = document.getElementById('inp-classe').value;
-  const data   = document.getElementById('inp-data').value;
-
-  const eNome   = validarNome(nome);
-  const eValor  = validarValor(valor);
-  const eClasse = validarClasse(classe);
-  const eData   = validarData(data);
-
-  setError('err-nome',   eNome);
-  setError('err-valor',  eValor);
-  setError('err-classe', eClasse);
-  setError('err-data',   eData);
-
-  if (eNome || eValor || eClasse || eData) return;
-
-  const [y, m, d] = data.split('-');
-  const dataBR = `${d}/${m}/${y}`;
-
-  // user_id é preenchido automaticamente pelo Supabase via auth.uid()
-  const novoGasto = {
-    nome:   nome.trim(),
-    valor:  parseFloat(parseFloat(valor).toFixed(2)),
-    classe: classe.trim(),
-    data:   dataBR,
-  };
-
-  setBloqueado(true);
-  try {
-    const registrado = await dbInserir(novoGasto);
-    historico.push(registrado);
-    atualizarStats();
-
-    document.getElementById('inp-nome').value   = '';
-    document.getElementById('inp-valor').value  = '';
-    document.getElementById('inp-classe').value = '';
-    document.getElementById('inp-data').value   = '';
-
-    showToast(`✔ "${nome.trim()}" cadastrado com sucesso!`, 'success');
-  } catch {
-    showToast('Erro ao salvar. Verifique sua conexão.', 'danger');
-  } finally {
-    setBloqueado(false);
+function renderRelatorio() {
+  if (typeof filtrarRelatorioPorCategoria === 'function') {
+    filtrarRelatorioPorCategoria();
   }
 }
-
-// ═══════════════════════════════════════════════════════
-// GANHOS — CADASTRO
-// ═══════════════════════════════════════════════════════
-
-async function salvarGanho() {
-  const nome   = document.getElementById('ganho-nome').value;
-  const valor  = document.getElementById('ganho-valor').value;
-  const classe = document.getElementById('ganho-classe').value;
-  const data   = document.getElementById('ganho-data').value;
-  const fixo   = document.getElementById('ganho-fixo').checked;
-
-  const eNome   = validarNome(nome);
-  const eValor  = validarValor(valor);
-  const eClasse = validarClasse(classe);
-  const eData   = validarData(data);
-
-  setError('err-ganho-nome',   eNome);
-  setError('err-ganho-valor',  eValor);
-  setError('err-ganho-classe', eClasse);
-  setError('err-ganho-data',   eData);
-
-  if (eNome || eValor || eClasse || eData) return;
-
-  const [y, m, d] = data.split('-');
-  const dataBR = `${d}/${m}/${y}`;
-
-  const novoGanho = {
-    nome:   nome.trim(),
-    valor:  parseFloat(parseFloat(valor).toFixed(2)),
-    classe: classe.trim(),
-    data:   dataBR,
-    fixo,
-  };
-
-  setBloqueado(true);
-  try {
-    const registrado = await dbInserirGanho(novoGanho);
-    historicoGanhos.push(registrado);
-    atualizarStats();
-
-    document.getElementById('ganho-nome').value   = '';
-    document.getElementById('ganho-valor').value  = '';
-    document.getElementById('ganho-classe').value = '';
-    document.getElementById('ganho-data').value   = '';
-    document.getElementById('ganho-fixo').checked = false;
-
-    showToast(`✔ "${nome.trim()}" cadastrado como ganho!`, 'success');
-  } catch {
-    showToast('Erro ao salvar ganho. Verifique sua conexão.', 'danger');
-  } finally {
-    setBloqueado(false);
-  }
-}
-// ═══════════════════════════════════════════════════════
 
 function renderListaRemover() {
   const cont = document.getElementById('lista-remover');
-
+  if (!cont) return;
   if (!historico.length) {
-    cont.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">⬡</div>
-        <div class="empty-text">Nenhum gasto para remover</div>
-      </div>`;
-    return;
+    cont.innerHTML = `<div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-text">Nenhum gasto</div></div>`; return;
   }
-
   cont.innerHTML = historico.map(g => `
     <div class="report-card">
       <div class="report-row">
-        <div>
-          <div class="report-name">${escHtml(g.nome)}</div>
-          <div class="report-meta">${escHtml(g.classe)} &nbsp;·&nbsp; ${g.data}</div>
-        </div>
+        <div><div class="report-name">${escHtml(g.nome)}</div><div class="report-meta">${escHtml(g.classe)} · ${g.data}</div></div>
         <div style="display:flex; align-items:center; gap:14px">
           <span class="val-cell">R$ ${formatVal(Number(g.valor))}</span>
           <button class="btn-remove" onclick="abrirModal(${g.id}, '${escHtml(g.nome)}')">✕ Remover</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
+}
+
+function renderListaRemoverGanho() {
+  const cont = document.getElementById('lista-remover-ganho');
+  if (!cont) return;
+  if (!historicoGanhos.length) {
+    cont.innerHTML = `<div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-text">Nenhum ganho</div></div>`; return;
+  }
+  cont.innerHTML = historicoGanhos.map(g => `
+    <div class="report-card">
+      <div class="report-row">
+        <div><div class="report-name">${escHtml(g.nome)}</div><div class="report-meta">${escHtml(g.classe)} · ${g.data}</div></div>
+        <div style="display:flex; align-items:center; gap:14px">
+          <span class="val-cell val-ganho">R$ ${formatVal(Number(g.valor))}</span>
+          <button class="btn-remove" onclick="abrirModalGanho(${g.id}, '${escHtml(g.nome)}')">✕ Remover</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderListaEditar() {
+  const cont = document.getElementById('lista-editar');
+  if (!cont) return;
+  if (!historico.length) {
+    cont.innerHTML = `<div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-text">Nenhum gasto</div></div>`; return;
+  }
+  cont.innerHTML = historico.map(g => `
+    <div class="report-card">
+      <div class="report-row">
+        <div><div class="report-name">${escHtml(g.nome)}</div><div class="report-meta">${escHtml(g.classe)} · ${g.data}</div></div>
+        <div style="display:flex; align-items:center; gap:14px">
+          <span class="val-cell">R$ ${formatVal(Number(g.valor))}</span>
+          <button class="btn-edit" onclick="abrirModalEditar(${g.id})">✎ Editar</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ─── 6. MODAIS ────────────────────────────────────────
+function showView(view, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  btn.classList.add('active');
+
+  if (view === 'remover')       renderListaRemover();
+  if (view === 'remover-ganho') renderListaRemoverGanho();
+  if (view === 'editar')        renderListaEditar();
+  if (view === 'relatorio')     renderRelatorio();
 }
 
 function abrirModal(id, nome) {
@@ -549,297 +431,116 @@ function abrirModal(id, nome) {
   document.getElementById('modal-overlay').classList.add('open');
 }
 
-function fecharModal() {
-  idRemover      = null;
-  idRemoverGanho = null;
-  document.getElementById('modal-overlay').classList.remove('open');
-  delete document.getElementById('modal-overlay').dataset.tipo;
-}
-
-async function confirmarRemocao() {
-  const tipo = document.getElementById('modal-overlay').dataset.tipo;
-  if (tipo === 'ganho') { await confirmarRemocaoGanho(); return; }
-
-  if (idRemover === null) return;
-
-  const gasto = historico.find(g => g.id === idRemover);
-  const nome  = gasto?.nome ?? '';
-
-  setBloqueado(true);
-  try {
-    await dbRemover(idRemover);
-    historico = historico.filter(g => g.id !== idRemover);
-    fecharModal();
-    renderListaRemover();
-    atualizarStats();
-    showToast(`✔ "${nome}" removido com sucesso!`, 'danger');
-  } catch {
-    showToast('Erro ao remover. Verifique sua conexão.', 'danger');
-    fecharModal();
-  } finally {
-    setBloqueado(false);
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// RELATÓRIO E STATS
-// ═══════════════════════════════════════════════════════
-
-function renderRelatorio() {
-  const tbody  = document.getElementById('tbody-relatorio');
-  const empty  = document.getElementById('empty-relatorio');
-  const totRow = document.getElementById('total-row-rel');
-  const totVal = document.getElementById('total-rel');
-  const tabela = document.getElementById('tabela-relatorio');
-
-  if (!historico.length) {
-    tbody.innerHTML      = '';
-    tabela.style.display = 'none';
-    totRow.style.display = 'none';
-    empty.style.display  = 'block';
-    return;
-  }
-
-  tabela.style.display = 'table';
-  totRow.style.display = 'flex';
-  empty.style.display  = 'none';
-
-  const total = historico.reduce((s, g) => s + Number(g.valor), 0);
-  totVal.textContent = `R$ ${formatVal(total)}`;
-
-  tbody.innerHTML = historico.map(g => `
-    <tr>
-      <td>${escHtml(g.nome)}</td>
-      <td><span class="val-cell">R$ ${formatVal(Number(g.valor))}</span></td>
-      <td><span class="tag-class">${escHtml(g.classe)}</span></td>
-      <td style="color:var(--text-muted); font-size:13px;">${g.data}</td>
-    </tr>
-  `).join('');
-}
-
-function atualizarStats() {
-  const totalGastos = historico.reduce((s, g) => s + Number(g.valor), 0);
-  const totalGanhos = historicoGanhos.reduce((s, g) => s + Number(g.valor), 0);
-  const maxVal      = historico.length ? Math.max(...historico.map(g => Number(g.valor))) : 0;
-  const balanco     = totalGanhos - totalGastos;
-
-  document.getElementById('stat-total').textContent = `R$ ${formatVal(totalGastos)}`;
-  document.getElementById('stat-count').textContent = historico.length;
-  document.getElementById('stat-max').textContent   = `R$ ${formatVal(maxVal)}`;
-
-  // ─── LÓGICA DE ALERTA VISUAL CYBERPUNK ───
-  const cardTotal = document.getElementById('stat-total').parentElement; 
-  const cardLimite = document.getElementById('card-limite');
-
-  // Remove classes antigas para recalcular
-  if (cardTotal) cardTotal.classList.remove('alerta-atencao', 'alerta-critico');
-  if (cardLimite) cardLimite.classList.remove('alerta-atencao', 'alerta-critico');
-
-  // Se houver um limite definido maior que zero, testa as regras
-  if (limiteMensal > 0) {
-    const percentualGasto = (totalGastos / limiteMensal) * 100;
-
-    if (percentualGasto >= 100) {
-      // Estourou o limite! (Vermelho Pulsante)
-      if (cardTotal) cardTotal.classList.add('alerta-critico');
-      if (cardLimite) cardLimite.classList.add('alerta-critico');
-      showToast('⚠️ ALERTA DE SISTEMA: Limite de gastos excedido!', 'danger');
-    } else if (percentualGasto >= 80) {
-      // Próximo do limite! (Laranja)
-      if (cardTotal) cardTotal.classList.add('alerta-atencao');
-      if (cardLimite) cardLimite.classList.add('alerta-atencao');
-    }
-  }
-
-  const elBalanco = document.getElementById('stat-balanco');
-  if (elBalanco) {
-    elBalanco.textContent  = `R$ ${formatVal(balanco)}`;
-    elBalanco.style.color  = balanco >= 0 ? 'var(--success)' : 'var(--danger)';
-  }
-}
-
-// ─── Remoção de Ganhos ────────────────────────────────
-function renderListaRemoverGanho() {
-  const cont = document.getElementById('lista-remover-ganho');
-  if (!cont) return;
-
-  if (!historicoGanhos.length) {
-    cont.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">⬡</div>
-        <div class="empty-text">Nenhum ganho para remover</div>
-      </div>`;
-    return;
-  }
-
-  cont.innerHTML = historicoGanhos.map(g => `
-    <div class="report-card">
-      <div class="report-row">
-        <div>
-          <div class="report-name">${escHtml(g.nome)} ${g.fixo ? '<span class="badge-fixo">FIXO</span>' : ''}</div>
-          <div class="report-meta">${escHtml(g.classe)} &nbsp;·&nbsp; ${g.data}</div>
-        </div>
-        <div style="display:flex; align-items:center; gap:14px">
-          <span class="val-cell val-ganho">R$ ${formatVal(Number(g.valor))}</span>
-          <button class="btn-remove" onclick="abrirModalGanho(${g.id}, '${escHtml(g.nome)}')">✕ Remover</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-let idRemoverGanho = null;
-
 function abrirModalGanho(id, nome) {
   idRemoverGanho = id;
   document.getElementById('modal-nome').textContent = nome;
-  document.getElementById('modal-overlay').classList.add('open');
-  document.getElementById('modal-overlay').dataset.tipo = 'ganho';
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.add('open');
+  overlay.dataset.tipo = 'ganho';
 }
 
-async function confirmarRemocaoGanho() {
-  if (idRemoverGanho === null) return;
+function fecharModal() {
+  idRemover = null; idRemoverGanho = null;
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.remove('open');
+  delete overlay.dataset.tipo;
+}
 
-  const ganho = historicoGanhos.find(g => g.id === idRemoverGanho);
-  const nome  = ganho?.nome ?? '';
+function abrirModalEditar(id) {
+  const g = historico.find(x => x && x.id === id);
+  if (!g) return;
+  idEditar = id;
+  document.getElementById('edit-nome').value  = g.nome;
+  document.getElementById('edit-valor').value = g.valor;
+  document.getElementById('edit-classe').value = g.classe;
+  const [d, m, y] = g.data.split('/');
+  document.getElementById('edit-data').value = `${y}-${m}-${d}`;
+  ['err-edit-nome', 'err-edit-valor', 'err-edit-classe', 'err-edit-data'].forEach(id => setError(id, ''));
+  document.getElementById('modal-editar-overlay').classList.add('open');
+}
 
-  setBloqueado(true);
-  try {
-    await dbRemoverGanho(idRemoverGanho);
-    historicoGanhos = historicoGanhos.filter(g => g.id !== idRemoverGanho);
-    idRemoverGanho  = null;
-    fecharModal();
-    renderListaRemoverGanho();
-    atualizarStats();
-    showToast(`✔ "${nome}" removido dos ganhos!`, 'danger');
-  } catch {
-    showToast('Erro ao remover ganho. Verifique sua conexão.', 'danger');
-    fecharModal();
-  } finally {
-    setBloqueado(false);
+function fecharModalEditar() {
+  idEditar = null;
+  document.getElementById('modal-editar-overlay').classList.remove('open');
+}
+
+// ─── 7. LIMITE MENSAL ─────────────────────────────────
+function carregarLimiteSalvo() {
+  const email = document.getElementById('user-email-display').textContent;
+  const salvo = localStorage.getItem(`limite_${email}`);
+  limiteMensal = salvo ? parseFloat(salvo) : 0;
+
+  const inp = document.getElementById('inp-limite');
+  if (inp) inp.value = limiteMensal > 0 ? limiteMensal : '';
+
+  const el = document.getElementById('stat-limite');
+  if (el) el.textContent = `R$ ${formatVal(limiteMensal)}`;
+}
+
+function salvarLimiteMensal() {
+  const inp = document.getElementById('inp-limite');
+  if (!inp) { showToast('Campo de limite não encontrado.', 'danger'); return; }
+
+  const val = parseFloat(inp.value);
+  if (inp.value === '' || isNaN(val) || val < 0) {
+    showToast('Informe um valor válido para o limite.', 'danger'); return;
   }
+
+  const email = document.getElementById('user-email-display').textContent;
+  limiteMensal = val;
+  localStorage.setItem(`limite_${email}`, limiteMensal);
+
+  const el = document.getElementById('stat-limite');
+  if (el) el.textContent = `R$ ${formatVal(limiteMensal)}`;
+  atualizarStats();
+  showToast('✔ Limite salvo!', 'success');
 }
 
-// ═══════════════════════════════════════════════════════
-// NAVEGAÇÃO E UI
-// ═══════════════════════════════════════════════════════
+// ─── 8. UTILITÁRIOS ───────────────────────────────────
+function validarNome(v)   { return (!v || v.trim().length === 0) ? 'Informe um nome.' : (/^\d+$/.test(v.trim()) ? 'Apenas números não é válido.' : ''); }
+function validarValor(v)  { const n = parseFloat(v); return (isNaN(n) || n <= 0) ? 'Valor inválido.' : ''; }
+function validarClasse(v) { return (!v || v.trim().length === 0) ? 'Informe a categoria.' : ''; }
+function validarData(v)   { return !v ? 'Selecione a data.' : ''; }
+function setError(id, msg){ const el = document.getElementById(id); if (el) el.textContent = msg; }
+function formatVal(n)     { return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function escHtml(s)       { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-function showView(view, btn) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('view-' + view).classList.add('active');
-  btn.classList.add('active');
-  if (view === 'remover')       renderListaRemover();
-  if (view === 'remover-ganho') renderListaRemoverGanho();
-  if (view === 'relatorio')     renderRelatorio();
-  if (view === 'editar')        renderListaEditar();
-}
-
-function setBloqueado(estado) {
-  document.querySelectorAll('#tela-app button, #tela-app input').forEach(el => {
-    el.disabled = estado;
+// Bloqueia apenas os formulários de cadastro/ganho, nunca o card de limite
+function setBloqueadoFormulario(e) {
+  ['inp-nome','inp-valor','inp-classe','inp-data',
+   'ganho-nome','ganho-valor','ganho-classe','ganho-data','ganho-fixo']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.disabled = e; });
+  // Bloqueia botões de cadastro
+  document.querySelectorAll('.btn-primary, .btn-ganho, .btn-confirm-remove').forEach(el => {
+    if (!el.closest('#modal-editar-overlay') && !el.closest('#card-limite')) el.disabled = e;
   });
-  const btn = document.querySelector('.btn-primary');
-  if (btn) btn.textContent = estado ? '⟳  Aguarde...' : '⬡   Cadastrar Gasto';
 }
 
-function setBloqueadoAuth(estado) {
-  document.querySelectorAll('#tela-auth button, #tela-auth input').forEach(el => {
-    el.disabled = estado;
-  });
+function setBloqueadoAuth(e) {
+  document.querySelectorAll('#tela-auth button, #tela-auth input').forEach(el => el.disabled = e);
 }
 
-// ─── Toast ────────────────────────────────────────────
 let toastTimer;
-
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
-  t.className   = 'toast' + (type ? ' ' + type : '') + ' show';
+  t.className = 'toast show ' + type;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// ─── Utilitários ──────────────────────────────────────
-function formatVal(n) {
-  return Number(n).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-// Carrega o limite salvo no LocalStorage para o e-mail do usuário atual
-function carregarLimiteSalvo() {
-  const emailAtivo = document.getElementById('user-email-display').textContent;
-  const limiteSalvo = localStorage.getItem(`limite_${emailAtivo}`);
-  
-  if (limiteSalvo) {
-    limiteMensal = parseFloat(limiteSalvo);
-    document.getElementById('inp-limite').value = limiteMensal;
-  } else {
-    limiteMensal = 0;
-    document.getElementById('inp-limite').value = '';
+// ─── 9. EVENTOS ───────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const act = document.activeElement.id;
+    if (['ganho-nome','ganho-valor','ganho-classe','ganho-data'].includes(act)) salvarGanho();
+    if (['inp-nome','inp-valor','inp-classe','inp-data'].includes(act)) salvarGasto();
+    if (act === 'login-senha') fazerLogin();
+    if (act === 'reg-confirma') fazerCadastro();
+    if (act === 'inp-limite') salvarLimiteMensal();
   }
-  const elStat = document.getElementById('stat-limite');
-  if (elStat) elStat.textContent = `R$ ${formatVal(limiteMensal)}`;
-}
-
-// Salva o limite definido pelo usuário
-function salvarLimiteMensal() {
-  const valorInput = document.getElementById('inp-limite').value;
-  const emailAtivo = document.getElementById('user-email-display').textContent;
-  
-  if (valorInput === '' || isNaN(valorInput) || parseFloat(valorInput) < 0) {
-    showToast('Informe um valor de limite válido.', 'danger');
-    return;
-  }
-  
-  limiteMensal = parseFloat(valorInput);
-  localStorage.setItem(`limite_${emailAtivo}`, limiteMensal);
-  
-  const elStat = document.getElementById('stat-limite');
-  if (elStat) elStat.textContent = `R$ ${formatVal(limiteMensal)}`;
-  
-  atualizarStats(); // Revalida as cores dos cards imediatamente
-  showToast('✔ Limite atualizado com sucesso!', 'success');
-}
-
-// ─── Event Listeners ──────────────────────────────────
-
-// Enter no formulário de ganhos
-['ganho-nome', 'ganho-valor', 'ganho-classe', 'ganho-data'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('keydown', e => {
-    if (e.key === 'Enter') salvarGanho();
-  });
 });
 
-// Enter no formulário de gastos
-['inp-nome', 'inp-valor', 'inp-classe', 'inp-data'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('keydown', e => {
-    if (e.key === 'Enter') salvarGasto();
-  });
-});
-
-// Enter nos campos de login
-document.getElementById('login-senha').addEventListener('keydown', e => {
-  if (e.key === 'Enter') fazerLogin();
-});
-
-// Enter nos campos de cadastro de conta
-document.getElementById('reg-confirma').addEventListener('keydown', e => {
-  if (e.key === 'Enter') fazerCadastro();
-});
-
-// Fechar modal clicando fora
-document.getElementById('modal-overlay').addEventListener('click', function (e) {
-  if (e.target === this) fecharModal();
-});
+document.getElementById('modal-overlay').addEventListener('click', function(e) { if (e.target === this) fecharModal(); });
+document.getElementById('modal-editar-overlay').addEventListener('click', function(e) { if (e.target === this) fecharModalEditar(); });

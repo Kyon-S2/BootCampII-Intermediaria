@@ -1,172 +1,105 @@
-/*
- * filters.css — Estilos do painel de Filtros Avançados
- * Finance Control System — tema Cyberpunk/Sci-Fi
- *
- * Usa as variáveis CSS já definidas no style.css do projeto:
- *   --cyan, --gold, --bg, --bg-secondary, --text, --text-muted
- *
- * Adicione no <head>:  <link rel="stylesheet" href="filters.css">
- */
+/* filters.css — Customizações para o Painel Cyberpunk */
 
-/* ─── Painel principal ─── */
 .filtros-painel {
-  border: 1px solid var(--cyan, #00e5ff);
-  background: var(--bg-secondary, #0d0d1a);
+  border: 1px solid var(--cyan, #00f5ff);
+  background: var(--panel, #111111);
   clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
   position: relative;
 }
 
-/* Detalhe de canto angular */
-.filtros-painel::before {
-  content: '';
-  position: absolute;
-  top: 0; right: 0;
-  border-top: 16px solid var(--cyan, #00e5ff);
-  border-left: 16px solid transparent;
-}
-
-/* ─── Header do painel ─── */
 .filtros-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.9rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 245, 255, 0.2);
+  padding-bottom: 0.5rem;
 }
 
 .filtros-titulo {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  color: var(--cyan, #00e5ff);
-  text-transform: uppercase;
-  text-shadow: 0 0 8px var(--cyan, #00e5ff);
-}
-
-.filtros-btn-limpar {
-  background: transparent;
-  border: 1px solid var(--gold, #ffd700);
-  color: var(--gold, #ffd700);
-  font-size: 0.65rem;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  color: var(--cyan, #00f5ff);
   letter-spacing: 0.1em;
-  padding: 0.2rem 0.6rem;
-  cursor: pointer;
-  clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
-  transition: background 0.2s, color 0.2s;
 }
 
-.filtros-btn-limpar:hover {
-  background: var(--gold, #ffd700);
-  color: #000;
-}
-
-/* ─── Grid de filtros ─── */
 .filtros-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
-@media (max-width: 640px) {
-  .filtros-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ─── Grupo individual ─── */
 .filtro-grupo {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.4rem;
 }
 
 .filtro-label {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  color: var(--text-muted, #888);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gold, #ffd700);
 }
 
-/* ─── Wrapper do input (ícone + campo) ─── */
 .filtro-input-wrapper {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--cyan, #00e5ff);
-  background: rgba(0, 229, 255, 0.04);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.filtro-input-wrapper:focus-within {
-  border-color: var(--gold, #ffd700);
-  box-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
-}
-
-.filtro-icone {
-  padding: 0 0.4rem;
-  color: var(--cyan, #00e5ff);
-  font-size: 1rem;
-  line-height: 1;
-  pointer-events: none;
-  user-select: none;
-}
-
-/* ─── Inputs e Select ─── */
-.filtro-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text, #e0e0e0);
-  font-size: 0.8rem;
-  padding: 0.45rem 0.5rem 0.45rem 0;
-  font-family: inherit;
+  position: relative;
   width: 100%;
 }
 
-/* Remove a seta padrão do select e adiciona a cyberpunk */
+/* Estilização dos Inputs e Selects */
+.filtro-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border, #1a1a1a);
+  color: var(--text, #e8e8e8);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  padding: 0.5rem;
+  outline: none;
+  transition: all 0.25s;
+  box-sizing: border-box;
+}
+
+.filtro-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan-glow, rgba(0, 245, 255, 0.3));
+}
+
+/* Remove visual padrão do select e insere a seta personalizada estilizada */
 .filtro-select {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2300e5ff'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2300f5ff'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.5rem center;
-  padding-right: 1.5rem;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
   cursor: pointer;
 }
 
 .filtro-select option {
-  background: var(--bg-secondary, #0d0d1a);
-  color: var(--text, #e0e0e0);
+  background: var(--panel, #111111);
+  color: var(--text, #e8e8e8);
 }
 
-/* Input type="month" — esconde ícone nativo em alguns navegadores */
-.filtro-input[type="month"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.6) sepia(1) saturate(5) hue-rotate(160deg);
-  cursor: pointer;
-  opacity: 0.7;
-}
-
-/* Placeholder */
-.filtro-input::placeholder {
-  color: var(--text-muted, #555);
+/* Botão de Limpar Filtros */
+.filtros-btn-limpar {
+  background: transparent;
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  color: var(--cyan);
+  font-family: 'Rajdhani', sans-serif;
   font-size: 0.75rem;
-}
-
-/* ─── Estado vazio da tabela ─── */
-.filtro-vazio {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: var(--text-muted, #666);
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
   text-transform: uppercase;
+  transition: all 0.2s;
+  border-radius: 2px;
 }
 
-.filtro-vazio-icone {
-  display: block;
-  font-size: 1.5rem;
-  color: var(--cyan, #00e5ff);
-  margin-bottom: 0.5rem;
-  opacity: 0.5;
+.filtros-btn-limpar:hover {
+  background: rgba(0, 245, 255, 0.1);
+  border-color: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan-glow, rgba(0, 245, 255, 0.5));
 }

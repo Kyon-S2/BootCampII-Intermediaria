@@ -283,6 +283,8 @@ header h1 {
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 28px;
+  position: relative;
+  z-index: 10;
 }
 
 .stat-card {
@@ -293,6 +295,7 @@ header h1 {
   overflow: hidden;
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
   transition: border-color 0.3s;
+  z-index: 2;
 }
 
 .stat-card::before {
@@ -1093,4 +1096,15 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   transform: translate(-50%, -50%);
   font-size: 10px;
   color: var(--success);
+}
+
+/* ─── Fix: card-limite clique no botão Definir ──────── */
+#card-limite::before {
+  display: none;
+}
+
+#card-limite * {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 }

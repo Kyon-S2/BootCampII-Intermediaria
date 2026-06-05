@@ -1,83 +1,104 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finance Control System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
-  <link rel="icon" type="image/png" href="favicon.ico"/>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="filters.css" />
+  <link rel="icon" type="image/png" href="favicon.ico" />
+  <style>
+    .auth-form { display: none !important; }
+    .auth-form.active { display: block !important; }
+
+    .limite-container {
+      margin-top: 8px;
+      display: flex;
+      gap: 5px;
+    }
+    .limite-input {
+      width: 100%;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(0,245,255,0.3);
+      color: #fff;
+      font-family: 'Rajdhani', sans-serif;
+      padding: 3px 6px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .limite-input:focus { border-color: var(--cyan); }
+    .limite-btn {
+      background: var(--cyan);
+      border: none;
+      color: #000;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      cursor: pointer;
+      font-weight: bold;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .limite-btn:hover { box-shadow: 0 0 8px var(--cyan); }
+  </style>
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════════════
-       TELA DE AUTENTICAÇÃO (login / cadastro)
-  ════════════════════════════════════════════════ -->
+  <!-- TELA DE LOGIN -->
   <div id="tela-auth" class="auth-overlay">
     <div class="auth-box">
-
       <div class="auth-header">
         <div class="auth-logo">⬡</div>
         <h1 class="auth-title">FINANCE CONTROL</h1>
         <p class="auth-sub">Sistema de Controle de Gastos</p>
       </div>
-
-      <!-- Abas Login / Cadastro -->
       <div class="auth-tabs">
         <button class="auth-tab active" onclick="trocarAba('login', this)">Entrar</button>
         <button class="auth-tab" onclick="trocarAba('cadastro-conta', this)">Criar Conta</button>
       </div>
-
-      <!-- Formulário Login -->
       <div id="form-login" class="auth-form active">
         <div class="form-group">
           <label>E-mail</label>
-          <input type="email" id="login-email" placeholder="seu@email.com"/>
+          <input type="email" id="login-email" placeholder="seu@email.com" />
           <div class="error-msg" id="err-login-email"></div>
         </div>
         <div class="form-group">
           <label>Senha</label>
-          <input type="password" id="login-senha" placeholder="••••••••"/>
+          <input type="password" id="login-senha" placeholder="••••••••" />
           <div class="error-msg" id="err-login-senha"></div>
         </div>
         <div class="error-msg auth-error" id="err-login-geral"></div>
-        <button class="btn-auth" id="btn-login" onclick="fazerLogin()">⬡ &nbsp; Entrar</button>
+        <button class="btn-auth" onclick="fazerLogin()">⬡ &nbsp; Entrar</button>
       </div>
-
-      <!-- Formulário Criar Conta -->
       <div id="form-cadastro-conta" class="auth-form">
         <div class="form-group">
           <label>E-mail</label>
-          <input type="email" id="reg-email" placeholder="seu@email.com"/>
+          <input type="email" id="reg-email" placeholder="seu@email.com" />
           <div class="error-msg" id="err-reg-email"></div>
         </div>
         <div class="form-group">
           <label>Senha</label>
-          <input type="password" id="reg-senha" placeholder="mínimo 6 caracteres"/>
+          <input type="password" id="reg-senha" placeholder="mínimo 6 caracteres" />
           <div class="error-msg" id="err-reg-senha"></div>
         </div>
         <div class="form-group">
           <label>Confirmar Senha</label>
-          <input type="password" id="reg-confirma" placeholder="repita a senha"/>
+          <input type="password" id="reg-confirma" placeholder="repita a senha" />
           <div class="error-msg" id="err-reg-confirma"></div>
         </div>
         <div class="error-msg auth-error" id="err-reg-geral"></div>
-        <button class="btn-auth" id="btn-registrar" onclick="fazerCadastro()">⬡ &nbsp; Criar Conta</button>
+        <button class="btn-auth" onclick="fazerCadastro()">⬡ &nbsp; Criar Conta</button>
       </div>
-
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════
-       APLICAÇÃO PRINCIPAL (visível após login)
-  ════════════════════════════════════════════════ -->
+  <!-- APP PRINCIPAL -->
   <div id="tela-app" class="app" style="display:none">
 
-    <!-- HEADER -->
     <header>
-      <div class="header-line">
-        <h1>⬡ FINANCE CONTROL SYSTEM ⬡</h1>
-      </div>
+      <div class="header-line"><h1>⬡ FINANCE CONTROL SYSTEM ⬡</h1></div>
       <div class="header-sub">Sistema de Controle de Gastos Pessoais</div>
       <div class="user-bar">
         <span class="user-email" id="user-email-display"></span>
@@ -99,20 +120,22 @@
         <div class="stat-label">Maior Gasto</div>
         <div class="stat-value" id="stat-max">R$ 0,00</div>
       </div>
-        <div class="stat-card" id="card-limite">
-      <div class="stat-label">LIMITE MENSAL</div>
-      <div class="stat-val" id="stat-limite">R$ 0,00</div>
+      <div class="stat-card" id="card-limite">
+        <div class="stat-label">Limite Mensal</div>
+        <div class="stat-value" id="stat-limite">R$ 0,00</div>
+        <div class="limite-container">
+          <input type="number" id="inp-limite" class="limite-input" placeholder="Valor" min="0" step="0.01" />
+          <button class="limite-btn" onclick="salvarLimiteMensal()">Definir</button>
+        </div>
       </div>
-      
       <div class="stat-card stat-card-balanco">
         <div class="stat-label">Balanço Financeiro</div>
         <div class="stat-value" id="stat-balanco">R$ 0,00</div>
       </div>
     </div>
 
-    <!-- MAIN GRID -->
     <div class="main-grid">
-
+      <!-- NAVEGAÇÃO -->
       <nav class="side-panel">
         <button class="nav-btn nav-btn-ganho active" onclick="showView('cadastro-ganho', this)">
           <span class="icon">＋</span> Cadastrar Ganho
@@ -127,44 +150,46 @@
         <button class="nav-btn" onclick="showView('remover', this)">
           <span class="icon">✕</span> Remover Gasto
         </button>
+        <button class="nav-btn" onclick="showView('editar', this)">
+          <span class="icon">✎</span> Editar Gasto
+        </button>
         <button class="nav-btn" onclick="showView('relatorio', this)">
           <span class="icon">▤</span> Relatório
         </button>
       </nav>
 
+      <!-- CONTEÚDO -->
       <div class="content-panel">
         <div class="corner-tl"></div>
 
-        <!-- VIEW: CADASTRO GANHO -->
+        <!-- CADASTRAR GANHO -->
         <div id="view-cadastro-ganho" class="view active">
-          <div class="panel-header">
-            <div class="panel-title">◈ Novo Ganho</div>
-          </div>
+          <div class="panel-header"><div class="panel-title">◈ Novo Ganho</div></div>
           <div class="panel-body">
             <div class="form-grid">
               <div class="form-group">
                 <label for="ganho-nome">Descrição do Ganho</label>
-                <input type="text" id="ganho-nome" placeholder="Ex: Salário, Freelance..."/>
+                <input type="text" id="ganho-nome" placeholder="Ex: Salário, Freelance..." />
                 <div class="error-msg" id="err-ganho-nome"></div>
               </div>
               <div class="form-group">
                 <label for="ganho-valor">Valor (R$)</label>
-                <input type="number" id="ganho-valor" placeholder="Ex: 3000.00" step="0.01" min="0.01"/>
+                <input type="number" id="ganho-valor" placeholder="Ex: 3000.00" step="0.01" min="0.01" />
                 <div class="error-msg" id="err-ganho-valor"></div>
               </div>
               <div class="form-group">
                 <label for="ganho-classe">Categoria</label>
-                <input type="text" id="ganho-classe" placeholder="Ex: Salário, Renda Extra..."/>
+                <input type="text" id="ganho-classe" placeholder="Ex: Salário, Renda Extra..." />
                 <div class="error-msg" id="err-ganho-classe"></div>
               </div>
               <div class="form-group">
                 <label for="ganho-data">Data</label>
-                <input type="date" id="ganho-data"/>
+                <input type="date" id="ganho-data" />
                 <div class="error-msg" id="err-ganho-data"></div>
               </div>
               <div class="form-group full">
                 <label class="checkbox-label">
-                  <input type="checkbox" id="ganho-fixo"/>
+                  <input type="checkbox" id="ganho-fixo" />
                   <span class="checkbox-custom"></span>
                   Ganho fixo mensal (ex: salário)
                 </label>
@@ -176,41 +201,44 @@
           </div>
         </div>
 
-        <!-- VIEW: REMOVER GANHO -->
+        <!-- REMOVER GANHO -->
         <div id="view-remover-ganho" class="view">
-          <div class="panel-header">
-            <div class="panel-title">◈ Remover Ganho</div>
-          </div>
-          <div class="panel-body">
-            <div id="lista-remover-ganho"></div>
-          </div>
+          <div class="panel-header"><div class="panel-title">◈ Remover Ganho</div></div>
+          <div class="panel-body"><div id="lista-remover-ganho"></div></div>
         </div>
 
-        <!-- VIEW: CADASTRO -->
-        <div id="view-cadastro" class="view active">
-          <div class="panel-header">
-            <div class="panel-title">◈ Novo Gasto</div>
-          </div>
+        <!-- CADASTRAR GASTO -->
+        <div id="view-cadastro" class="view">
+          <div class="panel-header"><div class="panel-title">◈ Novo Gasto</div></div>
           <div class="panel-body">
             <div class="form-grid">
               <div class="form-group">
                 <label for="inp-nome">Nome do Produto</label>
-                <input type="text" id="inp-nome" placeholder="Ex: Arroz, Boneca..."/>
+                <input type="text" id="inp-nome" placeholder="Ex: Arroz, Boneca..." />
                 <div class="error-msg" id="err-nome"></div>
               </div>
               <div class="form-group">
                 <label for="inp-valor">Valor (R$)</label>
-                <input type="number" id="inp-valor" placeholder="Ex: 50.30" step="0.01" min="0.01"/>
+                <input type="number" id="inp-valor" placeholder="Ex: 50.30" step="0.01" min="0.01" />
                 <div class="error-msg" id="err-valor"></div>
               </div>
               <div class="form-group">
                 <label for="inp-classe">Categoria</label>
-                <input type="text" id="inp-classe" placeholder="Ex: Mercado, Lazer..."/>
+                <select id="inp-classe" class="filtro-input filtro-select">
+                  <option value="" disabled selected>Selecione uma categoria...</option>
+                  <option value="Alimentação">Alimentação</option>
+                  <option value="Transporte">Transporte</option>
+                  <option value="Lazer">Lazer</option>
+                  <option value="Saúde">Saúde</option>
+                  <option value="Moradia">Moradia</option>
+                  <option value="Educação">Educação</option>
+                  <option value="Outros">Outros</option>
+                </select>
                 <div class="error-msg" id="err-classe"></div>
               </div>
               <div class="form-group">
                 <label for="inp-data">Data</label>
-                <input type="date" id="inp-data"/>
+                <input type="date" id="inp-data" />
                 <div class="error-msg" id="err-data"></div>
               </div>
               <div class="form-group full" style="padding-top:8px">
@@ -220,30 +248,48 @@
           </div>
         </div>
 
-        <!-- VIEW: REMOVER -->
+        <!-- REMOVER GASTO -->
         <div id="view-remover" class="view">
-          <div class="panel-header">
-            <div class="panel-title">◈ Remover Gasto</div>
-          </div>
-          <div class="panel-body">
-            <div id="lista-remover"></div>
-          </div>
+          <div class="panel-header"><div class="panel-title">◈ Remover Gasto</div></div>
+          <div class="panel-body"><div id="lista-remover"></div></div>
         </div>
 
-        <!-- VIEW: RELATÓRIO -->
+        <!-- EDITAR GASTO -->
+        <div id="view-editar" class="view">
+          <div class="panel-header"><div class="panel-title">◈ Editar Gasto</div></div>
+          <div class="panel-body"><div id="lista-editar"></div></div>
+        </div>
+
+        <!-- RELATÓRIO -->
         <div id="view-relatorio" class="view">
-          <div class="panel-header">
-            <div class="panel-title">◈ Relatório de Gastos</div>
-          </div>
+          <div class="panel-header"><div class="panel-title">◈ Relatório de Gastos</div></div>
           <div class="panel-body">
+            <div class="filtros-painel">
+              <div class="filtros-header">
+                <span class="filtros-titulo">◈ FILTRAR RELATÓRIO</span>
+                <button id="filtros-limpar" class="filtros-btn-limpar">✕ Limpar</button>
+              </div>
+              <div class="filtros-grid" style="grid-template-columns: 1fr;">
+                <div class="filtro-grupo">
+                  <label class="filtro-label" for="filtro-categoria">CATEGORIA</label>
+                  <div class="filtro-input-wrapper">
+                    <select id="filtro-categoria" class="filtro-input filtro-select">
+                      <option value="">Todas as Categorias</option>
+                      <option value="Alimentação">Alimentação</option>
+                      <option value="Transporte">Transporte</option>
+                      <option value="Lazer">Lazer</option>
+                      <option value="Saúde">Saúde</option>
+                      <option value="Moradia">Moradia</option>
+                      <option value="Educação">Educação</option>
+                      <option value="Outros">Outros</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
             <table class="expense-table" id="tabela-relatorio">
               <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Valor</th>
-                  <th>Categoria</th>
-                  <th>Data</th>
-                </tr>
+                <tr><th>Nome</th><th>Valor</th><th>Categoria</th><th>Data</th></tr>
               </thead>
               <tbody id="tbody-relatorio"></tbody>
             </table>
@@ -260,13 +306,13 @@
 
       </div><!-- /content-panel -->
     </div><!-- /main-grid -->
-  </div><!-- /app -->
+  </div><!-- /tela-app -->
 
-  <!-- MODAL: CONFIRMAR REMOÇÃO -->
+  <!-- MODAL REMOVER -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal">
       <h3>⚠ CONFIRMAR REMOÇÃO</h3>
-      <p>Deseja remover o gasto: <strong id="modal-nome"></strong>?<br/>Esta ação não poderá ser desfeita.</p>
+      <p>Deseja remover: <strong id="modal-nome"></strong>?<br/>Esta ação não poderá ser desfeita.</p>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
         <button class="btn-confirm-remove" onclick="confirmarRemocao()">Remover</button>
@@ -274,334 +320,46 @@
     </div>
   </div>
 
-  <!-- TOAST -->
-  <div class="toast" id="toast"></div>
-
-  <script src="app.js"></script>
-</body>
-</html>        <div class="form-group">
-          <label>E-mail</label>
-          <input type="email" id="login-email" placeholder="seu@email.com"/>
-          <div class="error-msg" id="err-login-email"></div>
-        </div>
-        <div class="form-group">
-          <label>Senha</label>
-          <input type="password" id="login-senha" placeholder="••••••••"/>
-          <div class="error-msg" id="err-login-senha"></div>
-        </div>
-        <div class="error-msg auth-error" id="err-login-geral"></div>
-        <button class="btn-auth" id="btn-login" onclick="fazerLogin()">⬡ &nbsp; Entrar</button>
-      </div>
-
-      <!-- Formulário Criar Conta -->
-      <div id="form-cadastro-conta" class="auth-form">
-        <div class="form-group">
-          <label>E-mail</label>
-          <input type="email" id="reg-email" placeholder="seu@email.com"/>
-          <div class="error-msg" id="err-reg-email"></div>
-        </div>
-        <div class="form-group">
-          <label>Senha</label>
-          <input type="password" id="reg-senha" placeholder="mínimo 6 caracteres"/>
-          <div class="error-msg" id="err-reg-senha"></div>
-        </div>
-        <div class="form-group">
-          <label>Confirmar Senha</label>
-          <input type="password" id="reg-confirma" placeholder="repita a senha"/>
-          <div class="error-msg" id="err-reg-confirma"></div>
-        </div>
-        <div class="error-msg auth-error" id="err-reg-geral"></div>
-        <button class="btn-auth" id="btn-registrar" onclick="fazerCadastro()">⬡ &nbsp; Criar Conta</button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════
-       APLICAÇÃO PRINCIPAL (visível após login)
-  ════════════════════════════════════════════════ -->
-  <div id="tela-app" class="app" style="display:none">
-
-    <!-- HEADER -->
-    <header>
-      <div class="header-line">
-        <h1>⬡ FINANCE CONTROL SYSTEM ⬡</h1>
-      </div>
-      <div class="header-sub">Sistema de Controle de Gastos Pessoais</div>
-      <div class="user-bar">
-        <span class="user-email" id="user-email-display"></span>
-        <button class="btn-logout" onclick="fazerLogout()">Sair</button>
-      </div>
-    </header>
-
-    <!-- STATS -->
-    <div class="stats-bar">
-      <div class="stat-card">
-        <div class="stat-label">Total Acumulado</div>
-        <div class="stat-value" id="stat-total">R$ 0,00</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Gastos Cadastrados</div>
-        <div class="stat-value cyan" id="stat-count">0</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Maior Gasto</div>
-        <div class="stat-value" id="stat-max">R$ 0,00</div>
-      </div>
-    </div>
-
-    <!-- MAIN GRID -->
-    <div class="main-grid">
-
-      <nav class="side-panel">
-        <button class="nav-btn active" onclick="showView('cadastro', this)">
-          <span class="icon">＋</span> Cadastrar Gasto
-        </button>
-        <button class="nav-btn" onclick="showView('remover', this)">
-          <span class="icon">✕</span> Remover Gasto
-        </button>
-        <button class="nav-btn" onclick="showView('editar', this)">
-          <span class="icon">✎</span> Editar Gasto
-        </button>
-        <button class="nav-btn" onclick="showView('relatorio', this)">
-          <span class="icon">▤</span> Relatório
-        </button>
-      </nav>
-
-      <div class="content-panel">
-        <div class="corner-tl"></div>
-<!-- VIEW: Limite -->
-        <div class="limit-config-box">
-   <label for="inp-limite">DEFINIR LIMITE MENSAL (R$):</label>
-    <div class="limit-input-group">
-     <input type="number" id="inp-limite" placeholder="Ex: 1500.00" step="0.01">
-      <button onclick="salvarLimiteMensal()">DEFINIR</button>
-      </div>
-      </div>
-
-        <!-- VIEW: CADASTRO -->
-        <div id="view-cadastro" class="view active">
-          <div class="panel-header">
-            <div class="panel-title">◈ Novo Gasto</div>
-          </div>
-          <div class="panel-body">
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="inp-nome">Nome do Produto</label>
-                <input type="text" id="inp-nome" placeholder="Ex: Arroz, Boneca..."/>
-                <div class="error-msg" id="err-nome"></div>
-              </div>
-              <div class="form-group">
-                <label for="inp-valor">Valor (R$)</label>
-                <input type="number" id="inp-valor" placeholder="Ex: 50.30" step="0.01" min="0.01"/>
-                <div class="error-msg" id="err-valor"></div>
-              </div>
-              <div class="form-group">
-                <label for="inp-classe">Categoria</label>
-                <input type="text" id="inp-classe" placeholder="Ex: Mercado, Lazer..."/>
-                <div class="error-msg" id="err-classe"></div>
-              </div>
-              <div class="form-group">
-                <label for="inp-data">Data</label>
-                <input type="date" id="inp-data"/>
-                <div class="error-msg" id="err-data"></div>
-              </div>
-              <div class="form-group full" style="padding-top:8px">
-                <button class="btn-primary" onclick="salvarGasto()">⬡ &nbsp; Cadastrar Gasto</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- VIEW: REMOVER -->
-        <div id="view-remover" class="view">
-          <div class="panel-header">
-            <div class="panel-title">◈ Remover Gasto</div>
-          </div>
-          <div class="panel-body">
-            <div id="lista-remover"></div>
-          </div>
-        </div>
-
-        <!-- VIEW: EDITAR -->
-        <div id="view-editar" class="view">
-          <div class="panel-header">
-            <div class="panel-title">◈ Editar Gasto</div>
-          </div>
-          <div class="panel-body">
-            <div id="lista-editar"></div>
-          </div>
-        </div>
-
-        <!-- VIEW: RELATÓRIO -->
-        <div id="view-relatorio" class="view">
-          <!--
-  ══════════════════════════════════════════════════════════════════
-  INSTRUÇÕES PARA index.html  —  Issue: Filtros Avançados e Busca
-  ══════════════════════════════════════════════════════════════════
-
-  PASSO 1 ─ Adicione o bloco <link> no <head> (junto com os outros links CSS):
-  ───────────────────────────────────────────────────────────────────────────
-  <link rel="stylesheet" href="filters.css">
-
-  ══════════════════════════════════════════════════════════════════
-  PASSO 2 ─ Cole o painel de filtros ACIMA da tabela de relatórios.
-            Localize a sua <table> de relatórios e cole ANTES dela:
-  ══════════════════════════════════════════════════════════════════
--->
-
-
-
-<!--
-  ══════════════════════════════════════════════════════════════════
-  PASSO 3 ─ Certifique-se de que sua <tbody> tem o id correto:
-  ══════════════════════════════════════════════════════════════════
-
-  <table>
-    <thead> ... </thead>
-    <tbody id="relatorio-tbody"> ← este id é obrigatório
-    </tbody>
-  </table>
-
-  E que o elemento que exibe o total tenha:
-    id="relatorio-total"
-
-  ══════════════════════════════════════════════════════════════════
-  PASSO 4 ─ Adicione os scripts no fim do <body>, NESTA ORDEM:
-  ══════════════════════════════════════════════════════════════════
-
-  <script src="app.js"></script>       ← já existia
-  <script src="filters.js"></script>   ← adicionar após app.js
-
--->
-
-          <div class="panel-header">
-            <div class="panel-title">◈ Relatório de Gastos</div>
-          </div>
-          <div class="panel-body">
-            <!-- FILTROS AVANÇADOS ─ início -->
-<div class="filtros-painel">
-  <div class="filtros-header">
-    <span class="filtros-titulo">◈ FILTROS</span>
-    <button id="filtros-limpar" class="filtros-btn-limpar">✕ Limpar</button>
-  </div>
-
-  <div class="filtros-grid">
-
-    <!-- Busca por nome -->
-    <div class="filtro-grupo">
-      <label class="filtro-label" for="filtro-nome">BUSCAR</label>
-      <div class="filtro-input-wrapper">
-        <span class="filtro-icone">⌕</span>
-        <input
-          type="text"
-          id="filtro-nome"
-          class="filtro-input"
-          placeholder="Nome do gasto..."
-          autocomplete="off"
-        />
-      </div>
-    </div>
-
-    <!-- Filtro por categoria -->
-    <div class="filtro-grupo">
-      <label class="filtro-label" for="filtro-categoria">CATEGORIA</label>
-      <div class="filtro-input-wrapper">
-        <select id="filtro-categoria" class="filtro-input filtro-select">
-          <option value="">Todas</option>
-          <!-- Opções populadas dinamicamente pelo filters.js -->
-        </select>
-      </div>
-    </div>
-
-    <!-- Filtro por mês/ano -->
-    <div class="filtro-grupo">
-      <label class="filtro-label" for="filtro-mes">MÊS / ANO</label>
-      <div class="filtro-input-wrapper">
-        <input
-          type="month"
-          id="filtro-mes"
-          class="filtro-input"
-        />
-      </div>
-    </div>
-
-  </div><!-- /.filtros-grid -->
-</div><!-- /.filtros-painel / FILTROS AVANÇADOS ─ fim -->
-            <table class="expense-table" id="tabela-relatorio">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Valor</th>
-                  <th>Categoria</th>
-                  <th>Data</th>
-                </tr>
-              </thead>
-              
-              <tbody id="relatorio-tbody"></tbody>
-              
-            </table>
-            <div class="total-row" id="total-row-rel">
-              <span class="total-label">Total Acumulado</span>
-              <span class="total-value" id="total-rel">R$ 0,00</span>
-            </div>
-            <div id="empty-relatorio" class="empty-state" style="display:none">
-              <div class="empty-icon">⬡</div>
-              <div class="empty-text">Nenhum gasto cadastrado ainda</div>
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /content-panel -->
-    </div><!-- /main-grid -->
-  </div><!-- /app -->
-
-  <!-- MODAL: CONFIRMAR REMOÇÃO -->
-  <div class="modal-overlay" id="modal-overlay">
-    <div class="modal">
-      <h3>⚠ CONFIRMAR REMOÇÃO</h3>
-      <p>Deseja remover o gasto: <strong id="modal-nome"></strong>?<br/>Esta ação não poderá ser desfeita.</p>
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
-        <button class="btn-confirm-remove" onclick="confirmarRemocao()">Remover</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: EDITAR GASTO -->
+  <!-- MODAL EDITAR -->
   <div class="modal-overlay" id="modal-editar-overlay">
     <div class="modal">
       <h3>✎ EDITAR GASTO</h3>
-      <div class="form-grid">
-        <div class="form-group">
-          <label for="edit-nome">Nome do Produto</label>
-          <input type="text" id="edit-nome" placeholder="Ex: Arroz, Boneca..."/>
-          <div class="error-msg" id="err-edit-nome"></div>
-        </div>
-        <div class="form-group">
-          <label for="edit-valor">Valor (R$)</label>
-          <input type="number" id="edit-valor" placeholder="Ex: 50.30" step="0.01" min="0.01"/>
-          <div class="error-msg" id="err-edit-valor"></div>
-        </div>
-        <div class="form-group">
-          <label for="edit-classe">Categoria</label>
-          <input type="text" id="edit-classe" placeholder="Ex: Mercado, Lazer..."/>
-          <div class="error-msg" id="err-edit-classe"></div>
-        </div>
-        <div class="form-group">
-          <label for="edit-data">Data</label>
-          <input type="date" id="edit-data"/>
-          <div class="error-msg" id="err-edit-data"></div>
-        </div>
+      <div class="form-group">
+        <label>Nome</label>
+        <input type="text" id="edit-nome" />
+        <div class="error-msg" id="err-edit-nome"></div>
+      </div>
+      <div class="form-group">
+        <label>Valor</label>
+        <input type="number" id="edit-valor" step="0.01" min="0.01" />
+        <div class="error-msg" id="err-edit-valor"></div>
+      </div>
+      <div class="form-group">
+        <label>Categoria</label>
+        <select id="edit-classe" class="filtro-input filtro-select">
+          <option value="" disabled>Selecione uma categoria...</option>
+          <option value="Alimentação">Alimentação</option>
+          <option value="Transporte">Transporte</option>
+          <option value="Lazer">Lazer</option>
+          <option value="Saúde">Saúde</option>
+          <option value="Moradia">Moradia</option>
+          <option value="Educação">Educação</option>
+          <option value="Outros">Outros</option>
+        </select>
+        <div class="error-msg" id="err-edit-classe"></div>
+      </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="edit-data" />
+        <div class="error-msg" id="err-edit-data"></div>
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="fecharModalEditar()">Cancelar</button>
-        <button class="btn-confirm-edit" onclick="confirmarEdicao()">Salvar Alterações</button>
+        <button class="btn-primary" onclick="confirmarEdicao()">Salvar</button>
       </div>
     </div>
   </div>
 
-  <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
   <script src="app.js"></script>
