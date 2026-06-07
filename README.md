@@ -6,7 +6,7 @@
 ![Status](https://img.shields.io/badge/status-online-00ff88?style=for-the-badge&labelColor=0d0d0d)
 ![Jest](https://img.shields.io/badge/testes-42%20passed-ffd700?style=for-the-badge&labelColor=0d0d0d)
 
-**Sistema de controle de gastos pessoais com autenticação e dados na nuvem.**
+**Sistema de controle de gastos pessoais com autenticação, dados na nuvem e balanço financeiro.**
 
 [🌐 Acessar o Sistema](https://kyon-s2.github.io/BootCampII-Intermediaria/)
 
@@ -14,23 +14,40 @@
 
 ---
 
+## 👥 Membros do Grupo
+
+| Nome | GitHub |
+|------|--------|
+| Felipe Gabriel do Nascimento Rodrigues | — |
+| Lucas Palácio Mello | — |
+| Letícia Vitória Cardoso Cunha | — |
+| Guilherme Brito Andrade | — |
+| Daniel Carlos Delfino dos Santos | — |
+
+---
+
 ## 📌 Sobre o Projeto
 
-O **Finance Control System** é uma conversão do projeto incial que era CLI em python, e foi convertido para GUI em HTML, CSS e JavaScript, com o uso do Claude Code.
+O **Finance Control System** é uma conversão do projeto inicial que era CLI em Python, convertido para GUI em HTML, CSS e JavaScript com uso do Claude Code. O sistema permite controlar gastos e ganhos pessoais com autenticação de usuários, persistência de dados na nuvem e isolamento por conta.
 
 ## ✨ Funcionalidades
 
-- 🔐 **Autenticação** — cadastro e login com e-mail e senha
-- ➕ **Cadastro de Gastos** — nome, valor, categoria e data
-- ✕ **Remoção de Gastos** — com confirmação antes de excluir
-- 📊 **Relatório** — tabela completa com total acumulado
-- 📈 **Dashboard** — total acumulado, quantidade e maior gasto
+- 🔐 **Autenticação** — cadastro e login com e-mail e senha via Supabase Auth
+- ➕ **Cadastro de Gastos** — nome, valor, categoria (select) e data
+- ✏️ **Edição de Gastos** — atualização de qualquer campo com categoria em select
+- ✕ **Remoção de Gastos** — com modal de confirmação antes de excluir
+- ➕ **Cadastro de Ganhos** — nome, valor, categoria, data e flag de ganho fixo mensal
+- ✕ **Remoção de Ganhos** — com modal de confirmação antes de excluir
+- 📊 **Relatório** — tabela completa com filtro por categoria e total acumulado
+- 📈 **Dashboard** — total acumulado, quantidade de gastos e maior gasto
+- ⚖️ **Balanço Financeiro** — diferença entre ganhos e gastos em tempo real
+- 🎯 **Limite Mensal** — definição de teto de gastos com alerta visual ao atingir 80% e 100%
 - 💾 **Dados na nuvem** — persistência real via Supabase (PostgreSQL)
 - 🔒 **Isolamento por usuário** — Row Level Security (RLS) no banco
 
 ---
 
-## 🛠️ Tecnologias
+## 🛠️ Stack Tecnológica
 
 | Camada | Tecnologia |
 |--------|-----------|
@@ -55,20 +72,20 @@ cd BootCampII-Intermediaria
 # 2. Instale as dependências
 npm install
 
-# 3. Configure as credenciais
-# Nesse projeto, coloquei a url do supabase e a anon key no próprio app.js por necessidade, mas pode ser criado um arquivo (config.js, por exemplo) e nele adicionar as keys e só fazer a integração com o js, por meio de variáveis.
+# 3. Configure as credenciais do Supabase
+# As credenciais (SUPABASE_URL e SUPABASE_ANON) estão no topo do app.js.
+# Caso prefira, crie um arquivo config.js baseado no config.example.js
+# e importe as variáveis no app.js.
+# ⚠️ Nunca envie credenciais reais para o repositório.
 
-# 4. Abra o index.html com o Live Server no VS Code
-
-# Adicional 
-#> ⚠️ O arquivo `config.js` não deve ser mandado para repositório por segurança — ele contém as credenciais do Supabase e está listado no `.gitignore`. Use o `config.example.js` como modelo.
+# 4. Abra o index.html com a extensão Live Server no VS Code
 ```
 
 ---
 
 ## ⚙️ Configuração do Supabase
 
-**1. Crie a tabela no SQL Editor:**
+### 1. Crie a tabela `gastos` no SQL Editor
 
 ```sql
 CREATE TABLE gastos (
@@ -82,7 +99,22 @@ CREATE TABLE gastos (
 );
 ```
 
-**2. Configure as policies (RLS):**
+### 2. Crie a tabela `ganhos` no SQL Editor
+
+```sql
+CREATE TABLE ganhos (
+  id        BIGSERIAL PRIMARY KEY,
+  nome      TEXT      NOT NULL,
+  valor     NUMERIC   NOT NULL,
+  classe    TEXT      NOT NULL,
+  data      TEXT      NOT NULL,
+  fixo      BOOLEAN   DEFAULT FALSE,
+  user_id   UUID      REFERENCES auth.users(id),
+  criado_em TIMESTAMP DEFAULT NOW()
+);
+```
+
+### 3. Configure as policies (RLS) para `gastos`
 
 ```sql
 ALTER TABLE gastos ENABLE ROW LEVEL SECURITY;
@@ -93,11 +125,29 @@ CREATE POLICY "select_proprio" ON gastos
 CREATE POLICY "insert_proprio" ON gastos
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "update_proprio" ON gastos
+  FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+
 CREATE POLICY "delete_proprio" ON gastos
   FOR DELETE TO authenticated USING (auth.uid() = user_id);
 ```
 
-**3. Trigger para preencher user_id automaticamente:**
+### 4. Configure as policies (RLS) para `ganhos`
+
+```sql
+ALTER TABLE ganhos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "select_ganho_proprio" ON ganhos
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+CREATE POLICY "insert_ganho_proprio" ON ganhos
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "delete_ganho_proprio" ON ganhos
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);
+```
+
+### 5. Trigger para preencher `user_id` automaticamente
 
 ```sql
 CREATE OR REPLACE FUNCTION preencher_user_id()
@@ -108,8 +158,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER trigger_user_id
+CREATE TRIGGER trigger_user_id_gastos
   BEFORE INSERT ON gastos
+  FOR EACH ROW EXECUTE FUNCTION preencher_user_id();
+
+CREATE TRIGGER trigger_user_id_ganhos
+  BEFORE INSERT ON ganhos
   FOR EACH ROW EXECUTE FUNCTION preencher_user_id();
 ```
 
@@ -142,15 +196,17 @@ BootCampII-Intermediaria/
 │       └── ci.yml            # Pipeline de testes automáticos
 ├── node_modules/             # Dependências (ignorado pelo git)
 ├── .gitignore
-├── app.js                    # Lógica e integração Supabase
+├── app.js                    # Lógica principal e integração Supabase
 ├── app.tests.js              # Testes automatizados (Jest)
-├── config.example.js         # Modelo de configuração (sem credenciais, apenas lembrete!)
+├── config.example.js         # Modelo de configuração (sem credenciais)
 ├── favicon.ico               # Ícone do site
+├── filters.css               # Estilos do painel de filtros
+├── filters.js                # Lógica de filtro por categoria no relatório
 ├── index.html                # Estrutura da aplicação
 ├── package.json
 ├── package-lock.json
 ├── README.md
-└── style.css                 # Estilização (preto, ciano e gold)
+└── style.css                 # Estilização principal (tema cyberpunk)
 ```
 
 ---
@@ -159,17 +215,19 @@ BootCampII-Intermediaria/
 
 Este projeto foi originalmente desenvolvido em **Python (CLI)** durante o BootCamp II e convertido para uma aplicação web completa como entrega intermediária, mantendo a mesma lógica de validação e expandindo com:
 
-- Interface gráfica web
+- Interface gráfica web com tema cyberpunk
 - Autenticação de usuários
-- Banco de dados na nuvem
-- Testes automatizados
-- Pipeline de CI/CD
+- Banco de dados na nuvem com duas tabelas (gastos e ganhos)
+- Edição de registros com RLS no Supabase
+- Balanço financeiro e limite mensal com alertas visuais
+- Filtro de relatório por categoria
+- Testes automatizados e pipeline de CI/CD
 
-Cloude Code usado nesse projeto!
 ---
 
 <div align="center">
 
 Desenvolvido durante o **BootCamp II — 2026**
+Uso de Inteligência Artificial (Clade Code, Gemini, etc)
 
 </div>
